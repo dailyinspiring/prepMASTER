@@ -100,10 +100,18 @@
         <div class="countdown-track"><span id="countdownProgress"></span></div>
         <div class="date-control">
           <label for="examDate">Your target exam date</label>
-          <div class="date-action">
-            <input type="date" id="examDate">
-            <button class="button button-red" id="saveDateBtn">Save date <span>↗</span></button>
-          </div>
+         <div class="date-action">
+    <input type="date" id="examDate">
+
+    <button class="button button-red" id="saveDateBtn" type="button">
+        Save date ↗
+    </button>
+
+    <button class="button button-outline" id="resetDateBtn" type="button"
+            aria-label="Reset target exam date">
+        ↺ Reset
+    </button>
+</div>
         </div>
       </article>
 
