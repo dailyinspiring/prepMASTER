@@ -269,5 +269,340 @@
       });
     }
   </script>
+  <script>
+(() => {
+
+    const API_URL =
+      "https://quoteslate.vercel.app/api/quotes/random?tags=motivation&count=20";
+
+    const CACHE_KEY = "prepMASTER_quotes_cache";
+    const LAST_KEY = "prepMASTER_last_quote";
+
+    const CACHE_DURATION = 6 * 60 * 60 * 1000;
+
+    const offlineQuotes = [
+        {
+            quote: "Your future is created by what you do today, not tomorrow.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "One focused hour is stronger than three distracted ones.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Consistency turns small efforts into remarkable progress.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Every difficult chapter becomes easier with practice.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Do not count the hours. Make the hours count.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Your competition is yesterday's version of yourself.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Small daily improvements lead to big results.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Stay patient. Your preparation is building something bigger.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Focus on progress, not perfection.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Dreams require discipline, not just motivation.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Every problem you solve makes you stronger.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Your hard work today is an investment in tomorrow.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Be consistent even when nobody is watching.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "A little progress each day adds up to big results.",
+            author: "prepMASTER"
+        },
+        {
+            quote: "Don't stop until you are proud of your progress.",
+            author: "prepMASTER"
+        }
+    ];
+
+    const quoteText = document.getElementById("quoteText");
+    const quoteAuthor = document.getElementById("quoteAuthor");
+    const quoteMode = document.getElementById("quoteMode");
+    const quoteCredit = document.getElementById("quoteCredit");
+    const newQuoteBtn = document.getElementById("newQuoteBtn");
+
+    let quotes = [];
+    let currentSource = "offline";
+
+    function normalizeQuotes(data) {
+
+        const items = Array.isArray(data)
+            ? data
+            : Array.isArray(data.quotes)
+                ? data.quotes
+                : [data];
+
+        const unique = new Map();
+
+        items.forEach(item => {
+
+            const text = String(
+                item.quote || item.content || item.text || ""
+            ).trim();
+
+            const author = typeof item.author === "string"
+                ? item.author
+                : item.author?.name || "Unknown";
+
+            if (!text) return;
+
+            const key = `${text}|${author}`;
+
+            unique.set(key, {
+                quote: text,
+                author,
+                key
+            });
+
+        });
+
+        return [...unique.values()];
+    }
+
+    function getCache() {
+
+        try {
+
+            return JSON.parse(
+                localStorage.getItem(CACHE_KEY)
+            );
+
+        } catch {
+
+            return null;
+
+        }
+    }
+
+    function renderQuote(quote, source) {
+
+        if (!quote) return;
+
+        quoteText.classList.add("quote-changing");
+
+        setTimeout(() => {
+
+            quoteText.textContent = quote.quote;
+
+            quoteAuthor.textContent = "— " + quote.author;
+
+            quoteText.classList.remove("quote-changing");
+
+        }, 180);
+
+        currentSource = source;
+
+        quoteMode.textContent =
+            source === "online" ? "LIVE API" :
+            source === "cached" ? "CACHED" :
+            "OFFLINE";
+
+        if (source === "offline") {
+
+            quoteCredit.textContent =
+                "Offline backup · prepMASTER";
+
+            quoteCredit.removeAttribute("href");
+
+        } else {
+
+            quoteCredit.textContent =
+                "Quotes powered by QuoteSlate";
+
+            quoteCredit.href =
+                "https://github.com/Musheer360/QuoteSlate";
+
+        }
+    }
+
+    function showRandomQuote() {
+
+        if (!quotes.length) return;
+
+        const last = localStorage.getItem(LAST_KEY);
+
+        let available = quotes.filter(
+            item => item.key !== last
+        );
+
+        if (!available.length) {
+            available = quotes;
+        }
+
+        const selected = available[
+            Math.floor(Math.random() * available.length)
+        ];
+
+        localStorage.setItem(LAST_KEY, selected.key);
+
+        renderQuote(selected, currentSource);
+    }
+
+    async function fetchOnlineQuotes() {
+
+        const controller = new AbortController();
+
+        const timeout = setTimeout(
+            () => controller.abort(),
+            10000
+        );
+
+        try {
+
+            const response = await fetch(API_URL, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                },
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error("Quote API unavailable");
+            }
+
+            const data = await response.json();
+
+            const fetched = normalizeQuotes(data);
+
+            if (!fetched.length) {
+                throw new Error("No quotes received");
+            }
+
+            quotes = fetched;
+            currentSource = "online";
+
+            try {
+
+                localStorage.setItem(
+                    CACHE_KEY,
+                    JSON.stringify({
+                        savedAt: Date.now(),
+                        quotes: fetched
+                    })
+                );
+
+            } catch (error) {
+                console.warn("Quote cache could not be saved.", error);
+            }
+
+            return true;
+
+        } finally {
+
+            clearTimeout(timeout);
+
+        }
+    }
+
+    async function initializeQuotes() {
+
+        const cached = getCache();
+
+        if (
+            cached &&
+            Array.isArray(cached.quotes) &&
+            cached.quotes.length
+        ) {
+
+            quotes = normalizeQuotes(cached.quotes);
+
+            currentSource =
+                Date.now() - cached.savedAt < CACHE_DURATION
+                ? "cached"
+                : "cached";
+
+            showRandomQuote();
+
+            // Use cached quotes immediately.
+            // Refresh the pool only when the cache expires.
+
+            if (
+                Date.now() - cached.savedAt >= CACHE_DURATION
+            ) {
+
+                try {
+
+                    await fetchOnlineQuotes();
+
+                    currentSource = "online";
+
+                    showRandomQuote();
+
+                } catch (error) {
+
+                    console.warn("Using cached quotes.", error);
+
+                }
+
+            }
+
+            return;
+        }
+
+        // No cached quotes: show offline backup first.
+
+        quotes = offlineQuotes.map(item => ({
+            ...item,
+            key: item.quote + "|" + item.author
+        }));
+
+        currentSource = "offline";
+
+        showRandomQuote();
+
+        // Try connecting to the online API.
+
+        try {
+
+            await fetchOnlineQuotes();
+
+            showRandomQuote();
+
+        } catch (error) {
+
+            console.log("Offline quote mode activated.", error);
+
+        }
+
+    }
+
+    newQuoteBtn.addEventListener(
+        "click",
+        showRandomQuote
+    );
+
+    initializeQuotes();
+
+})();
+</script>
 </body>
 </html>
