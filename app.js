@@ -355,7 +355,10 @@ async function connectUserCloud(user) {
     const settingsSnapshot = await getDoc(settingsRef);
     if (settingsSnapshot.exists()) {
       const remote = settingsSnapshot.data();
-      examDate = remote.examDate || examDate;
+      if (typeof remote.examDate === "string") {   
+        examDate = remote.examDate;   
+        $("examDate").value = examDate;
+      }
       if (remote.pomoDurations) {
         pomoDurations = {
           focus: clamp(remote.pomoDurations.focus, 1, 180, 25),
@@ -616,7 +619,16 @@ function saveExamDate() {
   syncSettingsToCloud();
   showMessage("timerMessage", "JEE target date saved.");
 }
+function resetExamDate() {
+    examDate = "";
+    $("examDate").value = "";
 
+    persist();
+    updateCountdown();
+    syncSettingsToCloud();
+
+    showMessage("timerMessage", "Target exam date has been reset.");
+}
 // ----- Shared study history -----
 function renderStats() {
   const today = new Date().toLocaleDateString();
@@ -916,8 +928,9 @@ function applyCustomDurations() {
 
 function bindEvents() {
   $("saveDateBtn").addEventListener("click", saveExamDate);
+  $("resetDateBtn").addEventListener("click", resetExamDate);
   $("examDate").addEventListener("change", updateCountdown);
-
+  
   $("startBtn").addEventListener("click", startMainTimer);
   $("pauseBtn").addEventListener("click", pauseMainTimer);
   $("resetBtn").addEventListener("click", resetMainTimer);
