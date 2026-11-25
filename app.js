@@ -1,21 +1,22 @@
 // prepMASTER cloud sync: GitHub Pages hosts the app; Firebase stores private user data.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, onSnapshot, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD3LRduma8s6Wg_0x9ifQmzg4mXbl-6Owo",
-    authDomain: "prepmaster-324ac.firebaseapp.com",
-    projectId: "prepmaster-324ac",
-    storageBucket: "prepmaster-324ac.firebasestorage.app",
-    messagingSenderId: "561214719051",
-    appId: "1:561214719051:web:2f06baa552528b347fb9ce",
-    measurementId: "G-CKC571DL3C"
-  };
+  apiKey: "AIzaSyD3LRduma8s6Wg_0x9ifQmzg4mXbl-6Owo",
+  authDomain: "prepmaster-324ac.firebaseapp.com",
+  projectId: "prepmaster-324ac",
+  storageBucket: "prepmaster-324ac.firebasestorage.app",
+  messagingSenderId: "561214719051",
+  appId: "1:561214719051:web:2f06baa552528b347fb9ce",
+  measurementId: "G-CKC571DL3C"
+};
 
 let firebaseAuth = null;
 let firestore = null;
@@ -23,6 +24,9 @@ let cloudUser = null;
 let stopSessionsListener = null;
 let stopSettingsListener = null;
 let cloudBusy = false;
+let phoneRecaptchaVerifier = null;
+let phoneConfirmationResult = null;
+let phoneFlowMode = "signin";
 
 function firebaseIsConfigured() {
   return firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PASTE_") &&
@@ -35,14 +39,48 @@ function setCloudStatus(message, connected = false) {
   status.classList.toggle("connected", connected);
   const button = document.getElementById("cloudBtn");
   button.textContent = connected ? "Disconnect sync" : "Connect Google to sync";
+  updatePhoneButton();
+}
+
+function updatePhoneButton() {
+  const phoneButton = document.getElementById("phoneAuthBtn");
+  if (!phoneButton) return;
+  if (!cloudUser) {
+    phoneButton.textContent = "Phone login";
+    phoneButton.title = "Sign in using a phone number already linked to your prepMASTER account";
+  } else if (cloudUser.phoneNumber) {
+    phoneButton.textContent = "Phone linked";
+    phoneButton.title = `Phone sign-in linked: ${cloudUser.phoneNumber}`;
+  } else {
+    phoneButton.textContent = "Link phone";
+    phoneButton.title = "Link a phone number to this Google account";
+  }
 }
 
 async function initCloudSync() {
   const button = document.getElementById("cloudBtn");
+  const phoneButton = document.getElementById("phoneAuthBtn");
+  phoneButton.addEventListener("click", openPhoneModal);
+  document.getElementById("phoneModalClose").addEventListener("click", closePhoneModal);
+  document.querySelectorAll("[data-close-phone]").forEach(el => el.addEventListener("click", closePhoneModal));
+  document.getElementById("sendOtpBtn").addEventListener("click", sendPhoneCode);
+  document.getElementById("verifyOtpBtn").addEventListener("click", verifyPhoneCode);
+  document.getElementById("phoneOtp").addEventListener("keydown", event => {
+    if (event.key === "Enter") verifyPhoneCode();
+  });
+  document.getElementById("phoneNumber").addEventListener("keydown", event => {
+    if (event.key === "Enter") sendPhoneCode();
+  });
+
   if (!firebaseIsConfigured()) {
     setCloudStatus("Local only");
     button.addEventListener("click", () => {
-      showMessage("cloudMessage", "Cloud sync needs a one-time Firebase setup. Follow README.md, then add your Firebase web config in app.js.", true);
+      showMessage("cloudMessage", "Cloud sync needs your Firebase web config in app.js. Follow README.md.", true);
+    });
+    phoneButton.disabled = true;
+    phoneButton.title = "Add Firebase configuration before using phone login";
+    phoneButton.addEventListener("click", () => {
+      showMessage("cloudMessage", "Add your Firebase web config in app.js before using phone login.", true);
     });
     return;
   }
@@ -69,6 +107,7 @@ async function initCloudSync() {
 
     onAuthStateChanged(firebaseAuth, async user => {
       cloudUser = user || null;
+      updatePhoneButton();
       if (stopSessionsListener) stopSessionsListener();
       if (stopSettingsListener) stopSettingsListener();
       stopSessionsListener = null;
@@ -92,6 +131,175 @@ async function initCloudSync() {
     setCloudStatus("Sync unavailable");
     showMessage("cloudMessage", `Firebase setup error: ${error.message}`, true);
   }
+}
+
+function openPhoneModal() {
+  if (!firebaseAuth) {
+    showMessage("cloudMessage", "Phone login is unavailable until Firebase configuration is added.", true);
+    return;
+  }
+
+  phoneFlowMode = cloudUser ? "link" : "signin";
+  phoneConfirmationResult = null;
+  document.getElementById("otpSection").classList.add("hidden");
+  document.getElementById("phoneOtp").value = "";
+  document.getElementById("sendOtpBtn").disabled = false;
+  document.getElementById("verifyOtpBtn").disabled = false;
+
+  if (cloudUser?.phoneNumber) {
+    document.getElementById("phoneModalTitle").textContent = "Phone already linked";
+    document.getElementById("phoneModalIntro").textContent =
+      `This account already has ${cloudUser.phoneNumber} linked. Use that number with its SMS code on another device to access the same study data.`;
+    document.getElementById("phoneNumber").value = cloudUser.phoneNumber;
+    document.getElementById("sendOtpBtn").textContent = "Phone is already linked";
+    document.getElementById("sendOtpBtn").disabled = true;
+  } else if (cloudUser) {
+    document.getElementById("phoneModalTitle").textContent = "Link phone number";
+    document.getElementById("phoneModalIntro").textContent =
+      "You are signed in with Google. Link your phone number to this same account once; after that, you can use either Google or phone OTP on your other devices and keep the same prepMASTER data.";
+    document.getElementById("phoneNumber").value = "";
+    document.getElementById("sendOtpBtn").textContent = "Link this phone";
+  } else {
+    document.getElementById("phoneModalTitle").textContent = "Phone login";
+    document.getElementById("phoneModalIntro").textContent =
+      "Enter a phone number already linked to your prepMASTER account. If you use a new, unlinked number, Firebase will create a separate account with separate study data.";
+    document.getElementById("phoneNumber").value = "";
+    document.getElementById("sendOtpBtn").textContent = "Send verification code";
+  }
+
+  document.getElementById("phoneAuthMessage").textContent = "";
+  document.getElementById("phoneModal").classList.remove("hidden");
+}
+
+function closePhoneModal() {
+  document.getElementById("phoneModal").classList.add("hidden");
+  if (phoneRecaptchaVerifier) {
+    try { phoneRecaptchaVerifier.clear(); } catch (error) { console.warn("reCAPTCHA cleanup:", error); }
+    phoneRecaptchaVerifier = null;
+  }
+  document.getElementById("recaptcha-container").innerHTML = "";
+  phoneConfirmationResult = null;
+}
+
+function normalizePhoneNumber(rawValue) {
+  let value = String(rawValue || "").trim().replace(/[()\s-]/g, "");
+  if (/^\d{10}$/.test(value)) value = `+91${value}`;
+  else if (/^91\d{10}$/.test(value)) value = `+${value}`;
+  if (!/^\+[1-9]\d{7,14}$/.test(value)) {
+    throw new Error("Enter a valid number with country code, such as +91 98765 43210.");
+  }
+  return value;
+}
+
+function resetPhoneRecaptcha() {
+  if (phoneRecaptchaVerifier) {
+    try { phoneRecaptchaVerifier.clear(); } catch (error) { console.warn("reCAPTCHA cleanup:", error); }
+    phoneRecaptchaVerifier = null;
+  }
+  document.getElementById("recaptcha-container").innerHTML = "";
+}
+
+async function sendPhoneCode() {
+  const sendButton = document.getElementById("sendOtpBtn");
+  sendButton.disabled = true;
+  try {
+    if (!firebaseAuth) throw new Error("Firebase is not ready. Refresh the page and try again.");
+    const phoneNumber = normalizePhoneNumber(document.getElementById("phoneNumber").value);
+
+    // The current signed-in Google account is used as the owner when linking.
+    phoneFlowMode = cloudUser ? "link" : "signin";
+    if (phoneFlowMode === "link" && cloudUser.phoneNumber) {
+      throw new Error("A phone number is already linked to this account.");
+    }
+
+    resetPhoneRecaptcha();
+    firebaseAuth.languageCode = "en";
+    phoneRecaptchaVerifier = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", {
+      size: "normal",
+      "expired-callback": () => {
+        showPhoneMessage("Verification expired. Complete the reCAPTCHA again and request a new code.", true);
+      }
+    });
+
+    showPhoneMessage("Preparing secure verification…");
+    if (phoneFlowMode === "link") {
+      phoneConfirmationResult = await linkWithPhoneNumber(cloudUser, phoneNumber, phoneRecaptchaVerifier);
+    } else {
+      phoneConfirmationResult = await signInWithPhoneNumber(firebaseAuth, phoneNumber, phoneRecaptchaVerifier);
+    }
+
+    document.getElementById("otpSection").classList.remove("hidden");
+    document.getElementById("phoneOtp").focus();
+    showPhoneMessage(`Verification code sent to ${phoneNumber}. Enter the 6-digit code.`);
+    sendButton.textContent = "Code sent";
+  } catch (error) {
+    const code = error?.code || "";
+    if (code === "auth/credential-already-in-use" || code === "auth/phone-number-already-exists") {
+      showPhoneMessage("This number is already connected to another Firebase account. Sign in to that account first; accounts are not merged automatically.", true);
+    } else {
+      showPhoneMessage(phoneErrorText(error), true);
+    }
+    resetPhoneRecaptcha();
+    sendButton.disabled = false;
+    sendButton.textContent = phoneFlowMode === "link" ? "Try linking again" : "Try sending code again";
+  }
+}
+
+async function verifyPhoneCode() {
+  const verifyButton = document.getElementById("verifyOtpBtn");
+  const code = document.getElementById("phoneOtp").value.trim();
+  if (!phoneConfirmationResult) {
+    showPhoneMessage("Request a verification code first.", true);
+    return;
+  }
+  if (!/^\d{6}$/.test(code)) {
+    showPhoneMessage("Enter the 6-digit verification code.", true);
+    return;
+  }
+
+  verifyButton.disabled = true;
+  try {
+    const result = await phoneConfirmationResult.confirm(code);
+    phoneConfirmationResult = null;
+
+    if (phoneFlowMode === "link") {
+      cloudUser = result.user;
+      updatePhoneButton();
+      showPhoneMessage("Phone number linked to your Google account. You can now use this number to access the same synced study data.");
+      setCloudStatus("Synced", true);
+      closePhoneModal();
+      showMessage("cloudMessage", "Phone login is linked to your Google account. Use the same number on your other devices.");
+    } else {
+      closePhoneModal();
+      showMessage("cloudMessage", "Signed in with phone. Loading your cloud study data…");
+      // Firebase's auth-state listener will attach the phone user's cloud data.
+    }
+  } catch (error) {
+    showPhoneMessage(phoneErrorText(error), true);
+    verifyButton.disabled = false;
+  }
+}
+
+function showPhoneMessage(message, isError = false) {
+  const el = document.getElementById("phoneAuthMessage");
+  el.textContent = message;
+  el.style.color = isError ? "#ff9b9b" : "#ff8099";
+}
+
+function phoneErrorText(error) {
+  const code = error?.code || "";
+  const friendly = {
+    "auth/invalid-phone-number": "That phone number is not valid. Include the country code.",
+    "auth/too-many-requests": "Too many attempts. Wait a while before trying again.",
+    "auth/quota-exceeded": "The SMS quota has been reached. Try again later or use a Firebase test phone number.",
+    "auth/captcha-check-failed": "reCAPTCHA verification failed. Refresh the page and try again.",
+    "auth/invalid-verification-code": "That code is incorrect. Check the SMS and try again.",
+    "auth/code-expired": "That code has expired. Request a new verification code.",
+    "auth/provider-already-linked": "A phone number is already linked to this account.",
+    "auth/operation-not-allowed": "Phone sign-in is not enabled in Firebase Authentication.",
+    "auth/billing-not-enabled": "Firebase requires an eligible billing account for live SMS phone authentication. Use a test phone number for development."
+  };
+  return friendly[code] || error?.message || "Phone verification failed. Check Firebase Authentication settings and try again.";
 }
 
 function userSessionsRef(user) {

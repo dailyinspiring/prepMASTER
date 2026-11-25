@@ -169,3 +169,30 @@ footer p{font-size:10px;margin:6px 0}footer small{font-size:9px;color:#696970}
   .cloud-button{font-size:8px;padding:7px 8px;white-space:normal;max-width:112px}
   .local-indicator{font-size:8px}
 }
+
+/* Phone sign-in modal */
+.hidden{display:none!important}
+.header-right{flex-wrap:wrap}
+.phone-button{padding:8px 11px;font-size:9px}
+.phone-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px}
+.phone-modal-backdrop{position:absolute;inset:0;background:#000c;backdrop-filter:blur(7px)}
+.phone-modal-card{position:relative;z-index:1;width:min(100%,440px);padding:28px;background:linear-gradient(145deg,#1c1c20,#101012);border:1px solid #e11d4840;border-radius:20px;box-shadow:0 28px 90px #000c;animation:revealUp .25s ease both}
+.phone-modal-card h2{font:800 25px Manrope;letter-spacing:-.7px;margin:0 0 10px}
+.phone-modal-close{position:absolute;right:15px;top:12px;border:0;background:transparent;color:#aaa;font-size:27px;line-height:1;padding:4px 8px}
+.phone-modal-intro{font-size:11px;line-height:1.6;color:var(--muted);margin-bottom:20px}
+.phone-input-group label,.otp-section label{display:block;color:#ddd;font-size:10px;font-weight:700;margin-bottom:7px}
+.phone-input-group input,.otp-section input{display:block;width:100%;font-size:13px;letter-spacing:.3px}
+.phone-input-group small{display:block;color:#888;font-size:9px;margin-top:6px;line-height:1.5}
+.phone-action-button{width:100%;margin-top:13px;padding:12px}
+.otp-section{margin-top:18px;padding-top:17px;border-top:1px solid #ffffff14}
+.otp-section input{letter-spacing:5px;text-align:center;font-size:18px}
+.recaptcha-box{margin-top:14px;min-height:0;overflow:visible}
+.phone-consent{font-size:9px;line-height:1.5;color:#85858d;margin:14px 0 0}
+#phoneAuthMessage{margin-top:11px}
+@media(max-width:680px){
+  .header-right{gap:6px;justify-content:flex-end;max-width:62%}
+  .cloud-button,.phone-button{font-size:7px;padding:7px 8px;max-width:104px;white-space:normal}
+  .phone-modal{padding:12px}
+  .phone-modal-card{padding:23px 18px;border-radius:17px}
+  .phone-modal-card h2{font-size:22px}
+}

@@ -1,6 +1,6 @@
 # prepMASTER — Cloud Sync Edition
 
-This version keeps the prepMASTER dashboard local-first and adds optional Google sign-in + private cloud sync.
+This version keeps the prepMASTER dashboard local-first and supports Google sign-in plus phone-number OTP sign-in/linking with private cloud sync.
 
 ## How cross-device sync works
 - GitHub Pages hosts the website files.
@@ -16,9 +16,10 @@ The currently running stopwatch/Pomodoro second-by-second state stays on the dev
 ### A. Create Firebase project
 1. Open https://console.firebase.google.com/ and create a project.
 2. Add a Web App in Project settings and copy its Firebase config.
-3. In Authentication → Sign-in method, enable **Google**.
+3. In Authentication → Sign-in method, enable **Google** and **Phone**.
 4. In Authentication → Settings → Authorized domains, add your GitHub Pages domain, for example `your-username.github.io`.
-5. In Firestore Database, create a database.
+5. In Authentication → Settings → SMS region policy, allow the country/region you intend to send OTPs to (for India, allow India).
+6. In Firestore Database, create a database.
 
 ### B. Add the Firebase config
 1. Open `app.js`.
@@ -53,3 +54,31 @@ Firebase Spark includes no-cost Firestore quotas. Current Firestore free quota d
 
 ## Privacy / GitHub clarification
 GitHub Pages publishes the website code; it is not the private database for your study records. The app intentionally stores study data in Firebase Firestore, not in a public GitHub repository. Never paste a GitHub personal access token into `app.js` or other browser code.
+
+
+## Phone authentication notes
+- Web phone authentication requires Firebase reCAPTCHA and the hosted domain must be in Authentication → Settings → Authorized domains.
+- Enter an Indian 10-digit number or an international number in E.164 format (for example `+91...`).
+- Firebase's current phone-auth setup requires an SMS region policy; new projects can initially allow no regions.
+- Firebase states that live SMS phone authentication requires a Cloud Billing account since September 2024. Do not enable billing just to test without checking the costs and getting the account owner's approval. Use Firebase's fictional test phone numbers/codes during development; test codes do not send real SMS.
+- Phone number sign-in is less secure than Google sign-in because phone numbers can be transferred. Keep Google sign-in available as a stronger alternative.
+- If a phone number is already attached to another Firebase user, Firebase will not automatically merge that account's data into the Google account. Sign in to the existing identity and handle any account migration deliberately.
+
+
+## Install prepMASTER on Android (no APK required)
+This package is a Progressive Web App (PWA). After uploading these updated files and the `icons` folder to the root of the GitHub repository:
+1. Wait for GitHub Pages to publish the update.
+2. Open `https://dailyinspiring.github.io/prepMASTER/` in Chrome on Android.
+3. Tap Chrome's three-dot menu.
+4. Choose **Install app** or **Install and create shortcut**, then confirm.
+5. prepMASTER appears on the Android home screen and opens in an app-like standalone window.
+
+The PWA needs to be served over HTTPS. On this GitHub Pages address it is HTTPS.
+The app still requires an internet connection for Firebase account login and cloud sync.
+
+## If you specifically need an APK file
+After the PWA version is deployed, you can use PWABuilder to package its HTTPS URL as an Android Trusted Web Activity (TWA). PWABuilder currently documents Android packaging through Bubblewrap. An APK can be generated for testing; publishing through Google Play requires a signed app bundle and a Play developer account. See:
+- https://www.pwabuilder.com/
+- https://github.com/pwa-builder/PWABuilder/blob/main/docs/builder/android.md
+
+This ZIP makes the website PWA-ready; it is not itself an `.apk` file.
