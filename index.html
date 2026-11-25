@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta name="description" content="prepMASTER — a focused JEE study tracker with Pomodoro timer and exam countdown.">
+  <title>prepMASTER | JEE Study Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="prepMASTER home">
+      <span class="brand-mark">P<span>.</span></span>
+      <span class="brand-copy"><b>prepMASTER</b><small>MAKE EVERY MINUTE COUNT</small></span>
+    </a>
+    <div class="header-right">
+      <span class="local-indicator" id="cloudStatus"><i></i> Local only</span>
+      <button class="button button-outline cloud-button" id="cloudBtn" type="button">Connect Google to sync</button>
+      <span class="today-label" id="todayLabel"></span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="welcome-row reveal">
+      <div>
+        <p class="eyebrow">YOUR PERSONAL STUDY SPACE</p>
+        <h1>Show up. <span>Stay consistent.</span></h1>
+        <p class="welcome-sub">One focused session at a time. Your preparation starts here.</p>
+      </div>
+      <div class="live-badge"><span class="live-dot"></span> FOCUS MODE</div>
+    </section>
+
+    <section class="hero-grid reveal">
+      <article class="card countdown-card">
+        <div class="section-top">
+          <div>
+            <p class="eyebrow">THE TARGET IS GETTING CLOSER</p>
+            <h2>JEE countdown<span class="red-dot">.</span></h2>
+          </div>
+          <div class="target-icon">⌁</div>
+        </div>
+        <div class="countdown-headline" id="countdown">Set your exam date</div>
+        <p class="muted" id="countdownSub">Choose your target date to start the live countdown.</p>
+        <div class="countdown-units" aria-label="Time remaining until your target date">
+          <div class="count-unit"><strong id="cdDays">--</strong><span>DAYS</span></div>
+          <div class="count-separator">:</div>
+          <div class="count-unit"><strong id="cdHours">--</strong><span>HOURS</span></div>
+          <div class="count-separator">:</div>
+          <div class="count-unit"><strong id="cdMinutes">--</strong><span>MINUTES</span></div>
+          <div class="count-separator">:</div>
+          <div class="count-unit seconds-unit"><strong id="cdSeconds">--</strong><span>SECONDS</span></div>
+        </div>
+        <div class="countdown-track"><span id="countdownProgress"></span></div>
+        <div class="date-control">
+          <label for="examDate">Your target exam date</label>
+          <div class="date-action">
+            <input type="date" id="examDate">
+            <button class="button button-red" id="saveDateBtn">Save date <span>↗</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="card quote-card">
+        <div class="quote-mark">“</div>
+        <p class="eyebrow">A REMINDER FOR TODAY</p>
+        <h2>Discipline is choosing what you want most over what you want now.</h2>
+        <div class="quote-footer"><span></span><small>YOUR FUTURE SELF IS COUNTING ON YOU</small></div>
+        <div class="quote-watermark">prepMASTER</div>
+      </article>
+    </section>
+
+    <section class="stats-grid reveal">
+      <article class="card stat-card">
+        <div class="stat-icon red-icon">◷</div><span class="stat-label">TODAY'S STUDY</span>
+        <strong id="todayTotal">00:00:00</strong><small>Time invested today</small>
+      </article>
+      <article class="card stat-card">
+        <div class="stat-icon">⌁</div><span class="stat-label">TOTAL STUDY TIME</span>
+        <strong id="allTotal">00:00:00</strong><small>Your accumulated effort</small>
+      </article>
+      <article class="card stat-card">
+        <div class="stat-icon">✦</div><span class="stat-label">SESSIONS SAVED</span>
+        <strong id="sessionCount">0</strong><small>Completed focus sessions</small>
+      </article>
+    </section>
+
+    <section class="section-heading reveal">
+      <div><p class="eyebrow">BUILD A BETTER ROUTINE</p><h2>Focus tools<span class="red-dot">.</span></h2></div>
+      <p class="muted section-note">Choose the timer that works for you.</p>
+    </section>
+
+    <section class="tools-grid reveal">
+      <article class="card pomo-card">
+        <div class="card-title-row">
+          <div><p class="eyebrow">POMODORO TIMER</p><h3>Work in focused intervals</h3></div>
+          <span class="mini-tag">SMART CYCLES</span>
+        </div>
+
+        <div class="pomo-presets" aria-label="Pomodoro presets">
+          <button class="preset active" data-focus="25" data-break="5" data-long="15">CLASSIC <b>25 / 5</b></button>
+          <button class="preset" data-focus="50" data-break="10" data-long="20">DEEP WORK <b>50 / 10</b></button>
+          <button class="preset" data-focus="90" data-break="15" data-long="25">FLOW <b>90 / 15</b></button>
+        </div>
+
+        <div class="pomo-main">
+          <div class="pomo-clock-wrap">
+            <svg class="pomo-ring" viewBox="0 0 220 220" aria-hidden="true">
+              <circle class="ring-track" cx="110" cy="110" r="96"></circle>
+              <circle class="ring-progress" id="pomoRing" cx="110" cy="110" r="96"></circle>
+            </svg>
+            <div class="pomo-clock-content">
+              <span class="pomo-mode" id="pomoModeLabel">FOCUS SESSION</span>
+              <strong id="pomoTime">25:00</strong>
+              <span class="pomo-cycle" id="pomoCycle">CYCLE 1 · 4</span>
+            </div>
+          </div>
+          <div class="pomo-controls">
+            <div class="pomo-mode-tabs">
+              <button class="mode-tab active" data-mode="focus">Focus</button>
+              <button class="mode-tab" data-mode="shortBreak">Short break</button>
+              <button class="mode-tab" data-mode="longBreak">Long break</button>
+            </div>
+            <p class="pomo-description" id="pomoDescription">Time to focus. One task, no distractions.</p>
+            <div class="button-row">
+              <button class="button button-red button-large" id="pomoStartBtn">Start focus</button>
+              <button class="button button-outline" id="pomoPauseBtn" disabled>Pause</button>
+              <button class="button button-quiet" id="pomoResetBtn" aria-label="Reset Pomodoro">↺</button>
+              <button class="button button-quiet" id="pomoSkipBtn" aria-label="Skip current Pomodoro phase">»</button>
+            </div>
+            <div class="cycle-progress">
+              <span>FOCUS CYCLES COMPLETED</span>
+              <div class="cycle-dots" id="cycleDots"><i class="filled"></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="custom-settings">
+          <div class="custom-title"><span>CUSTOM DURATIONS</span><small>Set your own routine</small></div>
+          <div class="custom-fields">
+            <label>Focus <div class="number-wrap"><input type="number" id="customFocus" min="1" max="180" value="25"><span>min</span></div></label>
+            <label>Short break <div class="number-wrap"><input type="number" id="customBreak" min="1" max="60" value="5"><span>min</span></div></label>
+            <label>Long break <div class="number-wrap"><input type="number" id="customLong" min="1" max="90" value="15"><span>min</span></div></label>
+            <button class="button button-outline apply-button" id="applyCustomBtn">Apply</button>
+          </div>
+        </div>
+        <p class="message" id="pomoMessage" aria-live="polite"></p>
+      </article>
+
+      <article class="card stopwatch-card">
+        <div class="card-title-row">
+          <div><p class="eyebrow">STUDY STOPWATCH</p><h3>Track every minute</h3></div>
+          <span class="stopwatch-symbol">◴</span>
+        </div>
+        <p class="muted stopwatch-intro">Use this for study sessions that don't need a fixed Pomodoro duration.</p>
+        <div class="stopwatch-display" id="timerDisplay">00:00:00</div>
+        <div class="timer-status"><i id="timerDot"></i><span id="timerStatus">Ready when you are</span></div>
+        <div class="timer-actions">
+          <button class="button button-red button-large" id="startBtn">Start studying</button>
+          <button class="button button-outline" id="pauseBtn" disabled>Pause</button>
+          <button class="button button-quiet" id="resetBtn" aria-label="Reset stopwatch">↺</button>
+        </div>
+        <div class="session-fields">
+          <label>Subject
+            <select id="subject"><option>Physics</option><option>Chemistry</option><option>Mathematics</option><option>Revision</option><option>Mock Test</option><option>Other</option></select>
+          </label>
+          <label>Topic / notes
+            <textarea id="topic" rows="2" placeholder="e.g. Electrostatics — practice questions"></textarea>
+          </label>
+        </div>
+        <button class="button button-save" id="saveSessionBtn" disabled>Finish & save session <span>↗</span></button>
+        <p class="message" id="timerMessage" aria-live="polite"></p>
+        <p class="message" id="cloudMessage" aria-live="polite"></p>
+      </article>
+    </section>
+
+    <section class="card history-card reveal">
+      <div class="history-heading">
+        <div><p class="eyebrow">YOUR CONSISTENCY</p><h2>Recent study sessions<span class="red-dot">.</span></h2></div>
+        <button id="refreshBtn" class="button button-outline">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Date & time</th><th>Subject</th><th>Topic</th><th>Duration</th><th>Source</th></tr></thead>
+          <tbody id="historyBody"><tr><td colspan="5" class="muted">No sessions yet. Start your first timer!</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <footer><span class="footer-brand">prepMASTER<span>.</span></span><p>Built for the hours that build your future.</p><small>Saved on this device and, when connected, synced securely to your private cloud account.</small></footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
